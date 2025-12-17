@@ -34,7 +34,7 @@ export default function Welcome({ onGetStarted }) {
           <h2 className="font-bold text-gray-900 mb-2">the tech side</h2>
           <p className="text-gray-700 text-sm leading-relaxed">
             completely decentralized. no data captured, no server, no tracking.
-            everything stays on your phone. dead simple.
+            everything stays in your browser. dead simple.
           </p>
         </div>
       </div>

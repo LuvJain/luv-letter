@@ -22,6 +22,14 @@ export default function Events() {
     setEvents(storedEvents);
   };
 
+  // Get unique locations from previous events for autocomplete
+  const getUniqueLocations = () => {
+    const locations = events
+      .map(event => event.location)
+      .filter(loc => loc && loc.trim() !== '');
+    return [...new Set(locations)]; // Remove duplicates
+  };
+
   const handleAddEvent = (e) => {
     e.preventDefault();
     if (newEvent.title && newEvent.date) {
@@ -113,7 +121,14 @@ export default function Events() {
                   setNewEvent({ ...newEvent, location: e.target.value })
                 }
                 placeholder="123 main st, sf"
+                autoComplete="street-address"
+                list="location-suggestions"
               />
+              <datalist id="location-suggestions">
+                {getUniqueLocations().map((location, index) => (
+                  <option key={index} value={location} />
+                ))}
+              </datalist>
             </div>
 
             <div>

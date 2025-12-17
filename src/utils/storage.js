@@ -55,12 +55,13 @@ export const saveSubscribers = (subscribers) => {
   localStorage.setItem(STORAGE_KEYS.SUBSCRIBERS, JSON.stringify(subscribers));
 };
 
-export const addSubscriber = (email, name = '') => {
+export const addSubscriber = (contact, name = '', type = 'email') => {
   const subscribers = getSubscribers();
   const newSubscriber = {
     id: Date.now().toString(),
-    email,
+    contact, // email or phone number
     name,
+    type, // 'email' or 'phone'
     addedAt: new Date().toISOString(),
   };
   subscribers.push(newSubscriber);
@@ -78,15 +79,23 @@ export const deleteSubscriber = (id) => {
 export const getSettings = () => {
   const settings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
   return settings ? JSON.parse(settings) : {
-    apiKey: '',
-    apiProvider: 'resend', // 'resend' or 'sendgrid'
-    fromEmail: '',
-    fromName: '',
+    userEmail: '',
   };
 };
 
 export const saveSettings = (settings) => {
   localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+};
+
+export const getUserEmail = () => {
+  const settings = getSettings();
+  return settings.userEmail || '';
+};
+
+export const setUserEmail = (email) => {
+  const settings = getSettings();
+  settings.userEmail = email;
+  saveSettings(settings);
 };
 
 // Export/Import

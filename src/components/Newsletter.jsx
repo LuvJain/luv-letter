@@ -65,7 +65,7 @@ export default function Newsletter() {
     return body;
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (subscribers.length === 0) {
       alert('Add some friends first!');
       return;
@@ -74,28 +74,85 @@ export default function Newsletter() {
     const currentMonth = new Date().toLocaleString('default', { month: 'long' });
     const subject = `${currentMonth} update`;
     const body = generateEmailBody();
-    const bcc = subscribers.map(s => s.email).join(',');
 
-    // Create mailto link
-    const mailtoLink = `mailto:?bcc=${encodeURIComponent(bcc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    // Split subscribers by type
+    const emailSubscribers = subscribers.filter(s => s.type === 'email' || !s.type);
+    const phoneSubscribers = subscribers.filter(s => s.type === 'phone');
 
-    // Check if URL is too long (iOS/Android have ~2000 char limits)
-    if (mailtoLink.length > 2000) {
-      // Fallback: copy to clipboard instead
-      const clipboardText = `To: (BCC your friends)\nSubject: ${subject}\n\n${body}`;
-      navigator.clipboard.writeText(clipboardText);
-      alert('Email is too long for auto-open! Content copied to clipboard. Paste into your email app.');
-      return;
+    let emailSuccess = false;
+    let smsResults = { success: 0, failed: 0 };
+
+    // Handle email subscribers
+    if (emailSubscribers.length > 0) {
+      const bcc = emailSubscribers.map(s => s.contact || s.email).join(',');
+      const mailtoLink = `mailto:?bcc=${encodeURIComponent(bcc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+      // Check if URL is too long (iOS/Android have ~2000 char limits)
+      if (mailtoLink.length > 2000) {
+        const clipboardText = `To: (BCC your friends)\nSubject: ${subject}\n\n${body}`;
+        navigator.clipboard.writeText(clipboardText);
+        alert('Email is too long for auto-open! Content copied to clipboard. Paste into your email app.');
+      } else {
+        try {
+          window.location.href = mailtoLink;
+          emailSuccess = true;
+        } catch (error) {
+          const clipboardText = `To: (BCC your friends)\nSubject: ${subject}\n\n${body}`;
+          navigator.clipboard.writeText(clipboardText);
+          alert('Could not open email app. Content copied to clipboard!');
+        }
+      }
     }
 
-    // Open email client
-    try {
-      window.location.href = mailtoLink;
-    } catch (error) {
-      // Fallback if mailto fails
-      const clipboardText = `To: (BCC your friends)\nSubject: ${subject}\n\n${body}`;
-      navigator.clipboard.writeText(clipboardText);
-      alert('Could not open email app. Content copied to clipboard!');
+    // Handle phone subscribers
+    if (phoneSubscribers.length > 0) {
+      const confirmSMS = confirm(
+        `Send SMS to ${phoneSubscribers.length} phone contact${phoneSubscribers.length !== 1 ? 's' : ''}? This will use ${phoneSubscribers.length} text${phoneSubscribers.length !== 1 ? 's' : ''} from your quota.`
+      );
+
+      if (confirmSMS) {
+        // Send without blocking alerts
+        for (const subscriber of phoneSubscribers) {
+          try {
+            const response = await fetch('/api/send-sms', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                to: subscriber.contact,
+                message: body,
+              }),
+            });
+
+            if (response.ok) {
+              smsResults.success++;
+            } else {
+              smsResults.failed++;
+              console.error(`Failed to send to ${subscriber.contact}`);
+            }
+          } catch (error) {
+            smsResults.failed++;
+            console.error(`Error sending to ${subscriber.contact}:`, error);
+          }
+        }
+
+        // Show results - combined summary
+        const summaryParts = [];
+        if (emailSuccess && emailSubscribers.length > 0) {
+          summaryParts.push(`${emailSubscribers.length} email${emailSubscribers.length !== 1 ? 's' : ''}`);
+        }
+        summaryParts.push(`${smsResults.success}/${phoneSubscribers.length} SMS`);
+
+        let resultMessage = `✓ Luv-letter sent to ${summaryParts.join(' and ')}!`;
+        if (smsResults.failed > 0) {
+          resultMessage += `\n✗ ${smsResults.failed} SMS failed`;
+        }
+        alert(resultMessage);
+      }
+    } else if (emailSuccess) {
+      // Email only - show email confirmation
+      alert(`✓ Luv-letter sent to ${emailSubscribers.length} email contact${emailSubscribers.length !== 1 ? 's' : ''}!`);
     }
   };
 
@@ -104,9 +161,23 @@ export default function Newsletter() {
       <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-500 to-rose-500 bg-clip-text text-transparent mb-6 animate-slide-up">send luv-letter</h1>
 
       <div className="card mb-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 mb-2">
           sending to {subscribers.length} friend{subscribers.length !== 1 ? 's' : ''}
         </p>
+        {subscribers.length > 0 && (
+          <div className="flex gap-2 text-xs">
+            {subscribers.filter(s => s.type === 'email' || !s.type).length > 0 && (
+              <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                📧 {subscribers.filter(s => s.type === 'email' || !s.type).length} email
+              </span>
+            )}
+            {subscribers.filter(s => s.type === 'phone').length > 0 && (
+              <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                📱 {subscribers.filter(s => s.type === 'phone').length} SMS
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="card mb-4">
@@ -155,7 +226,7 @@ export default function Newsletter() {
           onClick={handleSend}
           className="btn-primary w-full"
         >
-          open in email app
+          send luv-letter
         </button>
       </div>
 

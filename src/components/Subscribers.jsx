@@ -4,19 +4,27 @@ import {
   addSubscriber,
   deleteSubscriber,
   exportData,
+  getUserEmail,
+  setUserEmail,
 } from '../utils/storage';
 
 export default function Subscribers() {
   const [subscribers, setSubscribers] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showShareLink, setShowShareLink] = useState(false);
+  const [userEmailInput, setUserEmailInput] = useState('');
   const [newSubscriber, setNewSubscriber] = useState({
-    email: '',
+    contact: '',
     name: '',
+    type: 'email', // 'email' or 'phone'
   });
 
   useEffect(() => {
     loadSubscribers();
+    const savedEmail = getUserEmail();
+    if (savedEmail) {
+      setUserEmailInput(savedEmail);
+    }
   }, []);
 
   const loadSubscribers = () => {
@@ -25,9 +33,27 @@ export default function Subscribers() {
 
   const handleAddSubscriber = (e) => {
     e.preventDefault();
-    if (newSubscriber.email) {
-      addSubscriber(newSubscriber.email, newSubscriber.name);
-      setNewSubscriber({ email: '', name: '' });
+    if (newSubscriber.contact) {
+      let contact = newSubscriber.contact;
+
+      // Auto-add +1 to phone numbers if not present
+      if (newSubscriber.type === 'phone') {
+        // Remove any non-digit characters except leading +
+        const cleaned = contact.replace(/[^\d+]/g, '');
+
+        // If it doesn't start with +, add +1
+        if (!cleaned.startsWith('+')) {
+          contact = '+1' + cleaned;
+        } else if (cleaned.startsWith('+') && !cleaned.startsWith('+1')) {
+          // If it has + but not +1, assume US and add 1
+          contact = '+1' + cleaned.substring(1);
+        } else {
+          contact = cleaned;
+        }
+      }
+
+      addSubscriber(contact, newSubscriber.name, newSubscriber.type);
+      setNewSubscriber({ contact: '', name: '', type: 'email' });
       setShowAddForm(false);
       loadSubscribers();
     }
@@ -66,8 +92,11 @@ export default function Subscribers() {
 
       // Add all imported friends
       importedFriends.forEach(friend => {
-        if (friend.email) {
-          addSubscriber(friend.email, friend.name || '');
+        if (friend.contact || friend.email) {
+          // Support both old and new format
+          const contact = friend.contact || friend.email;
+          const type = friend.type || 'email';
+          addSubscriber(contact, friend.name || '', type);
         }
       });
 
@@ -79,18 +108,40 @@ export default function Subscribers() {
   };
 
   const generateShareLink = () => {
-    const subscribeUrl = `${window.location.origin}${window.location.pathname}?subscribe=true`;
+    const userEmail = getUserEmail();
+    if (!userEmail) {
+      return null;
+    }
+    const subscribeUrl = `${window.location.origin}${window.location.pathname}?subscribe=true&owner=${encodeURIComponent(userEmail)}`;
     return subscribeUrl;
+  };
+
+  const handleSaveEmail = () => {
+    if (!userEmailInput || !userEmailInput.includes('@')) {
+      alert('Please enter a valid email address');
+      return;
+    }
+    setUserEmail(userEmailInput);
+    alert('Email saved! Now you can share your subscribe link');
   };
 
   const copyShareLink = () => {
     const link = generateShareLink();
+    if (!link) {
+      alert('Please set your email first');
+      return;
+    }
     navigator.clipboard.writeText(link);
     alert('Link copied! Share this with friends');
   };
 
   const shareViaMessage = () => {
     const link = generateShareLink();
+    if (!link) {
+      alert('Please set your email first');
+      return;
+    }
+
     const message = `hey! i'm sending monthly luv-letters about where i'll be. click here to subscribe: ${link}`;
 
     // Try to use native share if available
@@ -129,16 +180,46 @@ export default function Subscribers() {
           <form onSubmit={handleAddSubscriber} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold mb-2 uppercase tracking-wide text-gray-500">
-                email *
+                contact type *
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewSubscriber({ ...newSubscriber, type: 'email', contact: '' })}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    newSubscriber.type === 'email'
+                      ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewSubscriber({ ...newSubscriber, type: 'phone', contact: '' })}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    newSubscriber.type === 'phone'
+                      ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Phone
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-2 uppercase tracking-wide text-gray-500">
+                {newSubscriber.type === 'email' ? 'email' : 'phone number'} *
               </label>
               <input
-                type="email"
+                type={newSubscriber.type === 'email' ? 'email' : 'tel'}
                 className="input-field"
-                value={newSubscriber.email}
+                value={newSubscriber.contact}
                 onChange={(e) =>
-                  setNewSubscriber({ ...newSubscriber, email: e.target.value })
+                  setNewSubscriber({ ...newSubscriber, contact: e.target.value })
                 }
-                placeholder="friend@example.com"
+                placeholder={newSubscriber.type === 'email' ? 'friend@example.com' : '1234567890 or +11234567890'}
                 required
               />
             </div>
@@ -201,24 +282,52 @@ export default function Subscribers() {
           </div>
 
           {showShareLink && (
-            <div className="space-y-2 pt-3 border-t border-rose-200 animate-slide-up">
-              <button
-                onClick={shareViaMessage}
-                className="w-full btn-primary text-sm"
-              >
-                share via text
-              </button>
-              <button
-                onClick={copyShareLink}
-                className="w-full btn-secondary text-sm"
-              >
-                copy link
-              </button>
-              <div className="bg-white rounded-lg p-2 mt-2">
-                <p className="text-xs text-gray-500 break-all font-mono">
-                  {generateShareLink()}
-                </p>
-              </div>
+            <div className="space-y-3 pt-3 border-t border-rose-200 animate-slide-up">
+              {!getUserEmail() ? (
+                <div>
+                  <label className="block text-xs font-semibold mb-2 uppercase tracking-wide text-gray-500">
+                    your email (so friends can send you their info)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      className="input-field flex-1"
+                      value={userEmailInput}
+                      onChange={(e) => setUserEmailInput(e.target.value)}
+                      placeholder="you@example.com"
+                    />
+                    <button
+                      onClick={handleSaveEmail}
+                      className="btn-primary text-sm whitespace-nowrap px-4"
+                    >
+                      save
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-500">
+                    subscribe link ready for: <span className="font-semibold">{getUserEmail()}</span>
+                  </p>
+                  <button
+                    onClick={shareViaMessage}
+                    className="w-full btn-primary text-sm"
+                  >
+                    share via text
+                  </button>
+                  <button
+                    onClick={copyShareLink}
+                    className="w-full btn-secondary text-sm"
+                  >
+                    copy link
+                  </button>
+                  <div className="bg-white rounded-lg p-2">
+                    <p className="text-xs text-gray-500 break-all font-mono">
+                      {generateShareLink()}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -255,11 +364,20 @@ export default function Subscribers() {
               style={{ animationDelay: `${index * 0.05}s` }}
             >
               <div className="flex justify-between items-center">
-                <div>
-                  {subscriber.name && (
-                    <p className="font-semibold text-gray-900">{subscriber.name}</p>
-                  )}
-                  <p className="text-sm text-gray-500">{subscriber.email}</p>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    {subscriber.name && (
+                      <p className="font-semibold text-gray-900">{subscriber.name}</p>
+                    )}
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      subscriber.type === 'phone'
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {subscriber.type === 'phone' ? '📱' : '📧'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500">{subscriber.contact || subscriber.email}</p>
                 </div>
                 <button
                   onClick={() => handleDeleteSubscriber(subscriber.id)}

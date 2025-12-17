@@ -9,8 +9,9 @@ function App() {
   const [currentTab, setCurrentTab] = useState('events')
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
-  const [subscriberEmail, setSubscriberEmail] = useState('')
+  const [subscriberContact, setSubscriberContact] = useState('')
   const [subscriberName, setSubscriberName] = useState('')
+  const [subscriberType, setSubscriberType] = useState('email')
 
   useEffect(() => {
     // Check if URL has subscribe parameter
@@ -49,18 +50,30 @@ function App() {
 
   const handleSubscribe = (e) => {
     e.preventDefault()
-    // Generate mailto link for the owner to add this subscriber
-    const mailtoLink = `mailto:?subject=${encodeURIComponent('New Luv-Letter Subscriber!')}&body=${encodeURIComponent(
-      `Hey! Someone wants to subscribe to your Luv-Letter:\n\nName: ${subscriberName}\nEmail: ${subscriberEmail}\n\nAdd them to your friends list!`
+
+    // Get owner email from URL parameter
+    const params = new URLSearchParams(window.location.search)
+    const ownerEmail = params.get('owner')
+
+    if (!ownerEmail) {
+      alert('Invalid subscribe link - missing owner email')
+      return
+    }
+
+    // Generate mailto link to the owner
+    const contactType = subscriberType === 'email' ? 'Email' : 'Phone';
+    const mailtoLink = `mailto:${encodeURIComponent(ownerEmail)}?subject=${encodeURIComponent('New Luv-Letter Subscriber!')}&body=${encodeURIComponent(
+      `Hey! Someone wants to subscribe to your Luv-Letter:\n\nName: ${subscriberName}\n${contactType}: ${subscriberContact}\n\nAdd them to your friends list!`
     )}`
 
     window.location.href = mailtoLink
 
     // Show success message
-    alert('Thanks! An email has been drafted. Send it to let them know you got their request')
+    alert('Thanks! An email has been drafted. Send it to let them know you want to subscribe')
     setShowSubscribeModal(false)
-    setSubscriberEmail('')
+    setSubscriberContact('')
     setSubscriberName('')
+    setSubscriberType('email')
   }
 
   return (
@@ -110,14 +123,44 @@ function App() {
 
               <div>
                 <label className="block text-xs font-semibold mb-2 uppercase tracking-wide text-gray-500">
-                  your email *
+                  how should they reach you? *
                 </label>
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubscriberType('email')
+                      setSubscriberContact('')
+                    }}
+                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                      subscriberType === 'email'
+                        ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    📧 Email
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubscriberType('phone')
+                      setSubscriberContact('')
+                    }}
+                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                      subscriberType === 'phone'
+                        ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    📱 Phone
+                  </button>
+                </div>
                 <input
-                  type="email"
+                  type={subscriberType === 'email' ? 'email' : 'tel'}
                   className="input-field"
-                  value={subscriberEmail}
-                  onChange={(e) => setSubscriberEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  value={subscriberContact}
+                  onChange={(e) => setSubscriberContact(e.target.value)}
+                  placeholder={subscriberType === 'email' ? 'you@example.com' : '+1234567890'}
                   required
                 />
               </div>
