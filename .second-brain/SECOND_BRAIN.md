@@ -27,6 +27,12 @@ version: "2.0"
 - `src/components/ui/` - Shared UI components (Shadcn)
 - `src/app/api/` - API route handlers
 - `src/hooks/useAuth.ts` - Authentication hook
+- `src/middleware.ts` - NextAuth v5 stateless session validation (MUST use secure cookies)
+- `src/lib/auth.ts` - NextAuth configuration with JWT strategy
+- `src/store/useEventStore.ts` - Zustand store for event management
+- `src/lib/rate-limit.ts` - Rate limiting utility using upstash/redis
+- `src/lib/email.ts` - Resend email service wrapper
+- `src/hooks/useToast.ts` - Toast notification hook (wraps sonner)
 
 ---
 
@@ -50,4 +56,53 @@ version: "2.0"
 - **Created**: `src/components/Hero.tsx`, `src/components/Features.tsx`
 - **Learned**: Framer Motion animations, responsive design patterns
 - **Technologies**: Framer Motion, TailwindCSS
+
+## Story: Add NextAuth Authentication (completed 2025-12-28T09:15:00Z)
+
+- **Created**: `src/middleware.ts`, `src/lib/auth.ts`, `src/app/api/auth/[...nextauth]/route.ts`
+- **Modified**: `src/app/layout.tsx` (wrapped with SessionProvider)
+- **Deleted**: `src/hooks/useAuth.ts` (replaced by NextAuth useSession)
+- **Learned**: NextAuth v5 uses **stateless JWT sessions**, NOT database sessions. Must configure secure HTTP-only cookies. Middleware runs on edge runtime.
+- **Constraints**: MUST use JWT strategy (not database sessions). Cookie settings MUST include `secure: true` and `httpOnly: true`
+- **Technologies**: NextAuth v5, JWT, Edge Runtime
+
+## Story: Event Management with Zustand (completed 2026-01-05T14:20:00Z)
+
+- **Created**: `src/store/useEventStore.ts`, `src/app/events/page.tsx`, `src/components/EventCard.tsx`
+- **Modified**: `src/app/api/events/route.ts` (added CRUD endpoints)
+- **Learned**: Zustand provides simpler state management than Redux for small apps. Persist middleware allows localStorage sync. Server Components should fetch directly, not use client stores.
+- **Constraints**: Use Zustand ONLY for client-side UI state. Server state should use React Query or Server Components.
+- **Technologies**: Zustand, React Query, Next.js Server Components
+
+## Story: Rate Limiting on Auth Endpoints (completed 2026-01-12T11:45:00Z)
+
+- **Created**: `src/lib/rate-limit.ts`, `src/app/api/auth/rate-limit.ts`
+- **Modified**: `src/app/api/auth/[...nextauth]/route.ts` (added rate limiting middleware)
+- **Learned**: Upstash Redis provides serverless-friendly rate limiting. Implemented sliding window algorithm. Rate limit by IP address with fallback to user ID.
+- **Constraints**: Rate limits: 5 login attempts per 15 minutes per IP. Must return 429 status with Retry-After header.
+- **Technologies**: Upstash Redis, Next.js API Routes
+
+## Story: Email Notifications with Resend (completed 2026-01-18T16:00:00Z)
+
+- **Created**: `src/lib/email.ts`, `src/emails/WelcomeEmail.tsx`, `src/emails/EventInvite.tsx`
+- **Modified**: `src/app/api/events/invite/route.ts` (trigger email on invite)
+- **Learned**: Resend provides React email templates. Use `@react-email/components` for consistent styling. Always handle email failures gracefully (don't block user flow).
+- **Constraints**: Email sending is async and can fail. Log failures but don't throw errors. Include unsubscribe link in all emails.
+- **Technologies**: Resend, React Email, Next.js API Routes
+
+## Story: Toast Notifications with Sonner (completed 2026-01-25T10:30:00Z)
+
+- **Created**: `src/hooks/useToast.ts`, `src/components/ToastProvider.tsx`
+- **Modified**: `src/app/layout.tsx` (added ToastProvider), multiple API routes (added toast feedback)
+- **Learned**: Sonner provides beautiful toast notifications with minimal setup. Custom hook wraps sonner for consistent error/success patterns. Position: bottom-right works best for this app.
+- **Constraints**: Use `toast.error()` for user-facing errors, `toast.success()` for confirmations. Never toast server errors directly (sanitize first).
+- **Technologies**: Sonner, React Hooks
+
+## Story: SMS Notifications (completed 2026-02-01T13:20:00Z)
+
+- **Created**: `src/lib/sms.ts`, `src/app/api/notifications/sms/route.ts`
+- **Modified**: `src/app/api/events/invite/route.ts` (added SMS option)
+- **Learned**: Twilio integration for SMS. Rate limiting critical for SMS to prevent cost overruns. User preference system for notification channels.
+- **Constraints**: SMS has character limits (160 chars). Must check user consent before sending. Track costs per message.
+- **Technologies**: Twilio, Next.js API Routes
 
