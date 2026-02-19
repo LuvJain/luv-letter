@@ -1,21 +1,22 @@
-# Task: Twilio credentials securely stored and never exposed in client-side code
+# Task: Serverless endpoint accepts SMS requests and schedules delivery via Twilio
 
 ## Description
-Implement secure storage and retrieval of Twilio API credentials using environment variables and a settings management system that prevents credential leakage.
+Create a serverless function endpoint that receives SMS message requests, validates them, schedules delivery through Twilio's API, and returns confirmation with message ID and scheduled time.
 
 ## Acceptance Criteria
-- Twilio API credentials are stored only in environment variables, not in code or state
-- Settings component shows connection status without displaying actual credentials
-- Credentials are validated at startup with error handling if missing
-- No API keys appear in Redux state, localStorage, or browser console
+- Endpoint accepts POST requests with phone, message content, and scheduled time
+- JWT authentication is required and validated before processing
+- Phone numbers are validated before sending to Twilio
+- Messages are scheduled for delivery within 3 days using Twilio's SendAt feature
+- Endpoint returns message ID and confirmation status on success
 
 ## Implementation Notes
-- Create credential-manager.js utility that reads Twilio API key and account SID from environment variables (VITE_TWILIO_ACCOUNT_SID, VITE_TWILIO_AUTH_TOKEN) at build time only.
-- Add validation function that checks credentials exist and are non-empty, returning error if missing, following early return pattern.
-- Modify settings.jsx to display Twilio provider selection and credential status (connected/disconnected) without exposing actual keys.
-- Store only the provider name and connection status in Redux state, never store actual API keys in application state or localStorage.
-- Create .env.example file documenting required environment variables with placeholder values for developer reference.
-- Add function to validate credentials by making test API call to Twilio (ping endpoint) without exposing keys in response.
+- Create api/schedule-sms.js serverless function that accepts POST requests with recipientPhone, messageContent, and scheduledTime in request body.
+- Validate JWT token from Authorization header using existing authentication pattern, returning 401 if missing or invalid.
+- Call validatePhoneNumber utility and return 400 with error message if phone validation fails.
+- Create sms-service.js with scheduleMessage function that calls Twilio API using fetch with account SID and auth token from environment variables.
+- Use Twilio's built-in scheduling feature by passing SendAt parameter (Unix timestamp) to schedule delivery within 3 days.
+- Return 200 response with messageId from Twilio, formattedPhone, scheduledTime, and status 'scheduled' on success; return 500 with error details on Twilio API failure.
 
 ## When You're Done
 When you have completed all acceptance criteria, create the file `.codepoet/done.json` with this structure:
