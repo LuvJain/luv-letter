@@ -1,22 +1,21 @@
-# Task: Serverless endpoint accepts SMS requests and schedules delivery via Twilio
+# Task: Twilio webhook updates message delivery status in real-time
 
 ## Description
-Create a serverless function endpoint that receives SMS message requests, validates them, schedules delivery through Twilio's API, and returns confirmation with message ID and scheduled time.
+Create a webhook endpoint to receive delivery status updates from Twilio and update message status in Redux state, enabling real-time tracking of sent and failed messages.
 
 ## Acceptance Criteria
-- Endpoint accepts POST requests with phone, message content, and scheduled time
-- JWT authentication is required and validated before processing
-- Phone numbers are validated before sending to Twilio
-- Messages are scheduled for delivery within 3 days using Twilio's SendAt feature
-- Endpoint returns message ID and confirmation status on success
+- Webhook endpoint receives and validates Twilio delivery status updates
+- Message status updates from 'scheduled' to 'sent' or 'failed' in Redux state
+- Failed messages include error code and reason for debugging
+- Webhook events are logged with Winston for audit trail and troubleshooting
 
 ## Implementation Notes
-- Create api/schedule-sms.js serverless function that accepts POST requests with recipientPhone, messageContent, and scheduledTime in request body.
-- Validate JWT token from Authorization header using existing authentication pattern, returning 401 if missing or invalid.
-- Call validatePhoneNumber utility and return 400 with error message if phone validation fails.
-- Create sms-service.js with scheduleMessage function that calls Twilio API using fetch with account SID and auth token from environment variables.
-- Use Twilio's built-in scheduling feature by passing SendAt parameter (Unix timestamp) to schedule delivery within 3 days.
-- Return 200 response with messageId from Twilio, formattedPhone, scheduledTime, and status 'scheduled' on success; return 500 with error details on Twilio API failure.
+- Create api/twilio-webhook.js endpoint that accepts POST requests from Twilio with MessageSid, MessageStatus (delivered/failed/undelivered), and ErrorCode.
+- Validate webhook authenticity using Twilio's request signature validation (X-Twilio-Signature header) to prevent unauthorized updates.
+- Call webhook-handler.js service function that maps Twilio status (delivered → sent, failed/undelivered → failed) to application status enum.
+- Dispatch Redux updateMessageStatus action with message ID and new status, including error details if status is failed.
+- Log webhook events using Winston logger with message ID, status, timestamp, and error code for audit trail.
+- Return 200 status immediately to acknowledge webhook receipt; handle database/state updates asynchronously to prevent timeout.
 
 ## When You're Done
 When you have completed all acceptance criteria, create the file `.codepoet/done.json` with this structure:
