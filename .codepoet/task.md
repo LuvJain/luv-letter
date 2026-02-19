@@ -1,21 +1,25 @@
-# Task: Redux state structure ready to store and manage SMS messages with scheduling and status data
+# Task: Phone numbers validated and formatted for North America and Europe regions
 
 ## Description
-Create Redux slices and state structure to store SMS message details, schedules, and delivery status. Define the data model for messages including phone number, content, scheduled time, and status tracking.
+Create a phone number validation utility that formats and validates phone numbers for North America and European markets, ensuring data quality before sending to Twilio.
 
 ## Acceptance Criteria
-- Redux store contains smsSlice with messages array, loading state, and error state
-- Message objects include recipientPhone, messageContent, scheduledTime, status, and retryCount fields
-- Actions exist to add, update status, and remove messages from Redux state
-- Selector functions return filtered message lists by status and ID
+- Phone numbers from all countries validate correctly with their respective country codes
+- Phone numbers are validated against country-specific format rules and digit length requirements
+- Invalid numbers are rejected with clear error messages indicating the specific validation failure
+- All phone numbers are formatted to E.164 standard before storage
+- System automatically detects country code from phone number input when possible
+- Users can explicitly specify country code to override automatic detection
 
 ## Implementation Notes
-- Create smsSlice.js with Redux Toolkit using createSlice to define initialState with messages array, loading state, and error state.
-- Define message object structure with fields: id, recipientPhone, messageContent, scheduledTime, status (scheduled/sent/failed), createdAt, updatedAt, and retryCount.
-- Add reducers for addMessage, updateMessageStatus, removeMessage, and setLoading following existing Redux patterns in codebase.
-- Create sms.types.js with TypeScript-style JSDoc comments defining MessageStatus enum (SCHEDULED, SENT, FAILED) and Message interface.
-- Export smsSlice reducer and actions from store/index.js, registering slice in configureStore following existing pattern.
-- Add selector functions in smsSlice.js: selectAllMessages, selectMessageById, selectPendingMessages, selectMessagesByStatus.
+- Integrate libphonenumber-js library to handle validation and formatting for all international phone numbers.
+- Create phone-validation.js with validatePhoneNumber function accepting phone string and optional country code parameter (ISO 3166-1 alpha-2 format).
+- Use parsePhoneNumber from libphonenumber-js to automatically detect country from input or use explicit country parameter.
+- Validate parsed phone number using isValid() method and format to E.164 using format('E.164') method.
+- Return object with isValid boolean, formattedNumber string, countryCode, and error message if validation fails.
+- Handle edge cases including missing country code, invalid country parameter, and malformed input with try-catch block.
+- Create comprehensive test file covering valid/invalid numbers from all regions including Asia, Africa, Oceania, Americas, and Europe.
+- Add fallback validation for edge cases where libphonenumber-js cannot parse by checking minimum digit length and plus sign prefix.
 
 ## When You're Done
 When you have completed all acceptance criteria, create the file `.codepoet/done.json` with this structure:
