@@ -1,25 +1,21 @@
-# Task: Phone numbers validated and formatted for North America and Europe regions
+# Task: Twilio credentials securely stored and never exposed in client-side code
 
 ## Description
-Create a phone number validation utility that formats and validates phone numbers for North America and European markets, ensuring data quality before sending to Twilio.
+Implement secure storage and retrieval of Twilio API credentials using environment variables and a settings management system that prevents credential leakage.
 
 ## Acceptance Criteria
-- Phone numbers from all countries validate correctly with their respective country codes
-- Phone numbers are validated against country-specific format rules and digit length requirements
-- Invalid numbers are rejected with clear error messages indicating the specific validation failure
-- All phone numbers are formatted to E.164 standard before storage
-- System automatically detects country code from phone number input when possible
-- Users can explicitly specify country code to override automatic detection
+- Twilio API credentials are stored only in environment variables, not in code or state
+- Settings component shows connection status without displaying actual credentials
+- Credentials are validated at startup with error handling if missing
+- No API keys appear in Redux state, localStorage, or browser console
 
 ## Implementation Notes
-- Integrate libphonenumber-js library to handle validation and formatting for all international phone numbers.
-- Create phone-validation.js with validatePhoneNumber function accepting phone string and optional country code parameter (ISO 3166-1 alpha-2 format).
-- Use parsePhoneNumber from libphonenumber-js to automatically detect country from input or use explicit country parameter.
-- Validate parsed phone number using isValid() method and format to E.164 using format('E.164') method.
-- Return object with isValid boolean, formattedNumber string, countryCode, and error message if validation fails.
-- Handle edge cases including missing country code, invalid country parameter, and malformed input with try-catch block.
-- Create comprehensive test file covering valid/invalid numbers from all regions including Asia, Africa, Oceania, Americas, and Europe.
-- Add fallback validation for edge cases where libphonenumber-js cannot parse by checking minimum digit length and plus sign prefix.
+- Create credential-manager.js utility that reads Twilio API key and account SID from environment variables (VITE_TWILIO_ACCOUNT_SID, VITE_TWILIO_AUTH_TOKEN) at build time only.
+- Add validation function that checks credentials exist and are non-empty, returning error if missing, following early return pattern.
+- Modify settings.jsx to display Twilio provider selection and credential status (connected/disconnected) without exposing actual keys.
+- Store only the provider name and connection status in Redux state, never store actual API keys in application state or localStorage.
+- Create .env.example file documenting required environment variables with placeholder values for developer reference.
+- Add function to validate credentials by making test API call to Twilio (ping endpoint) without exposing keys in response.
 
 ## When You're Done
 When you have completed all acceptance criteria, create the file `.codepoet/done.json` with this structure:
