@@ -3,9 +3,12 @@ import Events from './components/Events'
 import Subscribers from './components/Subscribers'
 import Newsletter from './components/Newsletter'
 import Welcome from './components/Welcome'
+import AuthLayout from './components/auth-layout'
+import { useAuth } from './hooks/use-auth'
 import { getEvents, getSubscribers } from './utils/storage'
 
 function App() {
+  const auth = useAuth()
   const [currentTab, setCurrentTab] = useState('events')
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
@@ -76,17 +79,10 @@ function App() {
     setSubscriberType('email')
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-rose-50 to-orange-50">
-      {/* Welcome Screen */}
-      {showWelcome && !showSubscribeModal && (
-        <div className="fixed inset-0 bg-gradient-to-br from-purple-50 via-rose-50 to-orange-50 z-50 overflow-auto">
-          <Welcome onGetStarted={() => setShowWelcome(false)} />
-        </div>
-      )}
-
-      {/* Subscribe Modal */}
-      {showSubscribeModal && (
+  // If URL has ?subscribe=true, show subscribe modal without requiring auth
+  if (showSubscribeModal) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-rose-50 to-orange-50">
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 relative">
             <button
@@ -171,33 +167,56 @@ function App() {
             </form>
           </div>
         </div>
-      )}
+      </div>
+    )
+  }
 
-      {/* Main Content */}
-      <main className="pb-16">
-        {renderContent()}
-      </main>
+  return (
+    <AuthLayout>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-rose-50 to-orange-50">
+        {/* Welcome Screen */}
+        {showWelcome && (
+          <div className="fixed inset-0 bg-gradient-to-br from-purple-50 via-rose-50 to-orange-50 z-50 overflow-auto">
+            <Welcome onGetStarted={() => setShowWelcome(false)} />
+          </div>
+        )}
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-purple-100 safe-area-bottom">
-        <div className="flex justify-around items-center h-16">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setCurrentTab(tab.id)}
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 ${
-                currentTab === tab.id
-                  ? 'text-orange-500 scale-110'
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              <span className="text-2xl mb-1">{tab.icon}</span>
-              <span className="text-xs font-semibold">{tab.label}</span>
-            </button>
-          ))}
+        {/* Logout Button */}
+        <div className="fixed top-4 right-4 z-40">
+          <button
+            onClick={auth.logout}
+            className="bg-white/80 backdrop-blur-sm text-gray-500 hover:text-rose-500 px-3 py-1.5 rounded-xl text-xs font-semibold border border-purple-100 hover:border-rose-200 transition-all duration-200 shadow-sm"
+          >
+            sign out
+          </button>
         </div>
-      </nav>
-    </div>
+
+        {/* Main Content */}
+        <main className="pb-16">
+          {renderContent()}
+        </main>
+
+        {/* Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-purple-100 safe-area-bottom">
+          <div className="flex justify-around items-center h-16">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setCurrentTab(tab.id)}
+                className={`flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 ${
+                  currentTab === tab.id
+                    ? 'text-orange-500 scale-110'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <span className="text-2xl mb-1">{tab.icon}</span>
+                <span className="text-xs font-semibold">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
+      </div>
+    </AuthLayout>
   )
 }
 
