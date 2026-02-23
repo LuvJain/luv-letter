@@ -1,0 +1,9 @@
+{
+  "status": "completed",
+  "summary": "Wired authentication into the app entry point with route protection. Created ProtectedRoute component that checks useAuth() and renders LoginForm/PasswordResetForm for unauthenticated users. Updated App.jsx to use ProtectedRoute instead of AuthLayout, added user phone number display in the app header, and kept the logout button that clears session and returns to login. Added Authorization Bearer token header to the Newsletter SMS API call. Page refresh requires re-login since AuthProvider does not restore tokens from localStorage on initialization.",
+  "files_changed": [
+    "src/components/protected-route.jsx",
+    "src/App.jsx",
+    "src/components/Newsletter.jsx"
+  ]
+}
