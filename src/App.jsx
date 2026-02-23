@@ -3,12 +3,12 @@ import Events from './components/Events'
 import Subscribers from './components/Subscribers'
 import Newsletter from './components/Newsletter'
 import Welcome from './components/Welcome'
-import AuthLayout from './components/AuthLayout'
+import ProtectedRoute from './components/protected-route'
 import useAuth from './hooks/use-auth'
 import { getEvents, getSubscribers } from './utils/storage'
 
 function App() {
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
   const [currentTab, setCurrentTab] = useState('events')
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
@@ -172,7 +172,7 @@ function App() {
   }
 
   return (
-    <AuthLayout>
+    <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-rose-50 to-orange-50">
         {/* Welcome Screen */}
         {showWelcome && (
@@ -181,15 +181,22 @@ function App() {
           </div>
         )}
 
-        {/* Logout Button */}
-        <div className="absolute top-4 right-4 z-40">
+        {/* App Header */}
+        <header className="flex items-center justify-between px-4 pt-4 pb-2 z-40 relative">
+          <div className="flex items-center gap-2">
+            {user?.phone_number && (
+              <span className="text-xs font-medium text-gray-500">
+                {user.phone_number}
+              </span>
+            )}
+          </div>
           <button
             onClick={logout}
             className="text-xs font-semibold text-gray-400 hover:text-rose-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/50"
           >
             sign out
           </button>
-        </div>
+        </header>
 
         {/* Main Content */}
         <main className="pb-16">
@@ -216,7 +223,7 @@ function App() {
           </div>
         </nav>
       </div>
-    </AuthLayout>
+    </ProtectedRoute>
   )
 }
 
