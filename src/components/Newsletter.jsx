@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { getEvents, getSubscribers } from '../utils/storage';
+import useAuth from '../hooks/use-auth';
 
 export default function Newsletter() {
+  const { token } = useAuth();
   const [events, setEvents] = useState([]);
   const [subscribers, setSubscribers] = useState([]);
   const [introMessage, setIntroMessage] = useState('');
@@ -114,11 +116,13 @@ export default function Newsletter() {
         // Send without blocking alerts
         for (const subscriber of phoneSubscribers) {
           try {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) {
+              headers['Authorization'] = `Bearer ${token}`;
+            }
             const response = await fetch('/api/send-sms', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              headers,
               body: JSON.stringify({
                 to: subscriber.contact,
                 message: body,
