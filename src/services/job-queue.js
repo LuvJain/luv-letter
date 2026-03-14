@@ -80,11 +80,11 @@ export const processQueue = () => {
   const queue = getQueue();
 
   queue.process(async (job) => {
-    const { messageId, userId } = job.data;
+    const { messageId, userId, recipientName, messagePreview, sendTime } = job.data;
 
-    const messagePreview = `Scheduled message ${messageId}`;
+    const preview = messagePreview || `Scheduled message ${messageId}`;
 
-    const result = await sendReminderEmail(userId, messageId, messagePreview);
+    const result = await sendReminderEmail(userId, messageId, preview, recipientName, sendTime);
 
     if (!result.sent) {
       // If skipped due to unsubscribe/snooze, don't retry
