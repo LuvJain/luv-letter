@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "bull": "^4.16.5",
+    "nodemailer": "^8.0.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

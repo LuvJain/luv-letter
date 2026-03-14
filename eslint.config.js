@@ -26,4 +26,10 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  {
+    files: ['api/**/*.js', 'src/services/**/*.js', 'src/utils/email-templates.js', 'src/utils/reminder-scheduler.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ])
