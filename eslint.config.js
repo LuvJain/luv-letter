@@ -27,7 +27,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['api/**/*.js', 'src/services/**/*.js'],
+    files: ['api/**/*.js', 'src/services/**/*.js', 'src/utils/email-templates.js', 'src/utils/reminder-scheduler.js'],
     languageOptions: {
       globals: globals.node,
     },
