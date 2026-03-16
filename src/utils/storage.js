@@ -4,6 +4,7 @@ const STORAGE_KEYS = {
   EVENTS: 'luvletter_events',
   SUBSCRIBERS: 'luvletter_subscribers',
   SETTINGS: 'luvletter_settings',
+  EMAIL_PREFERENCES: 'luvletter_email_preferences',
 };
 
 // Events
@@ -96,6 +97,24 @@ export const setUserEmail = (email) => {
   const settings = getSettings();
   settings.userEmail = email;
   saveSettings(settings);
+};
+
+// Email Preferences
+export const getEmailPreferencesStore = (userId) => {
+  const allPrefs = localStorage.getItem(STORAGE_KEYS.EMAIL_PREFERENCES);
+  const prefsMap = allPrefs ? JSON.parse(allPrefs) : {};
+  return prefsMap[userId] || {
+    email: '',
+    unsubscribe_status: false,
+    snooze_until: null,
+  };
+};
+
+export const saveEmailPreferencesStore = (userId, prefs) => {
+  const allPrefs = localStorage.getItem(STORAGE_KEYS.EMAIL_PREFERENCES);
+  const prefsMap = allPrefs ? JSON.parse(allPrefs) : {};
+  prefsMap[userId] = prefs;
+  localStorage.setItem(STORAGE_KEYS.EMAIL_PREFERENCES, JSON.stringify(prefsMap));
 };
 
 // Export/Import
