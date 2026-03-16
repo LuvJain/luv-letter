@@ -1,6 +1,7 @@
 // Email service for sending reminder notifications via SMTP
 
 import { getEmailPreferencesStore } from '../utils/storage.js';
+import { generateReminderEmail } from '../utils/email-templates.js';
 
 // Check if user has unsubscribed or is in a snooze period
 const shouldSendToUser = (preferences) => {
@@ -22,57 +23,8 @@ const shouldSendToUser = (preferences) => {
   return true;
 };
 
-// Build reminder email HTML content
-const buildReminderHTML = (messagePreview, messageId) => {
-  const reviewUrl = `${process.env.APP_URL || 'http://localhost:5173'}/messages/${messageId}`;
-
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scheduled Message Reminder</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center;">
-      <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">
-        Scheduled Message Reminder
-      </h1>
-    </div>
-
-    <div style="padding: 30px 20px;">
-      <p style="color: #333333; line-height: 1.6; margin: 0 0 20px 0; font-size: 16px;">
-        Your scheduled message is about to be sent. Here's a preview:
-      </p>
-
-      <div style="background-color: #f9fafb; border-left: 4px solid #667eea; padding: 20px; margin-bottom: 20px; border-radius: 4px;">
-        <p style="color: #333333; margin: 0; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">
-          ${messagePreview}
-        </p>
-      </div>
-
-      <div style="text-align: center; margin-top: 30px;">
-        <a href="${reviewUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-size: 16px; font-weight: bold;">
-          Review &amp; Edit Message
-        </a>
-      </div>
-    </div>
-
-    <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
-      <p style="color: #999999; margin: 0; font-size: 12px;">
-        Sent with Luv Letter
-      </p>
-    </div>
-  </div>
-</body>
-</html>
-  `.trim();
-};
-
 // Send a reminder email for a scheduled message
-export const sendReminderEmail = async (userId, messageId, messagePreview) => {
+export const sendReminderEmail = async (userId, messageId, messagePreview, recipientName, scheduledSendTime) => {
   if (!userId) {
     throw new Error('userId is required');
   }
@@ -119,9 +71,11 @@ export const sendReminderEmail = async (userId, messageId, messagePreview) => {
     },
   });
 
-  const htmlContent = buildReminderHTML(
+  const htmlContent = generateReminderEmail(
     messagePreview || 'No preview available',
     messageId,
+    recipientName || 'your recipient',
+    scheduledSendTime || new Date().toISOString(),
   );
 
   const mailOptions = {
