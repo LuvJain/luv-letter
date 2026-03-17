@@ -4,8 +4,10 @@ import Subscribers from './components/Subscribers'
 import Newsletter from './components/Newsletter'
 import Welcome from './components/Welcome'
 import { getEvents, getSubscribers } from './utils/storage'
+import { useAuth } from './hooks/use-auth'
 
 function App() {
+  const auth = useAuth()
   const [currentTab, setCurrentTab] = useState('events')
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
@@ -195,6 +197,15 @@ function App() {
               <span className="text-xs font-semibold">{tab.label}</span>
             </button>
           ))}
+          {auth.isAuthenticated && (
+            <button
+              onClick={auth.logout}
+              className="flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 text-gray-400 hover:text-rose-500"
+            >
+              <span className="text-2xl mb-1">👋</span>
+              <span className="text-xs font-semibold">logout</span>
+            </button>
+          )}
         </div>
       </nav>
     </div>
