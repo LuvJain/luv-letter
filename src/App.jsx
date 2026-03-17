@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Events from './components/Events'
 import Subscribers from './components/Subscribers'
 import Newsletter from './components/Newsletter'
+import TemplateManager from './components/template-manager'
 import Welcome from './components/Welcome'
 import { getEvents, getSubscribers } from './utils/storage'
 
@@ -32,6 +33,7 @@ function App() {
   const tabs = [
     { id: 'events', label: 'where', icon: '📍' },
     { id: 'subscribers', label: 'friends', icon: '💜' },
+    { id: 'templates', label: 'templates', icon: '📝' },
     { id: 'newsletter', label: 'send', icon: '✉️' },
   ]
 
@@ -41,6 +43,8 @@ function App() {
         return <Events />
       case 'subscribers':
         return <Subscribers />
+      case 'templates':
+        return <TemplateManager />
       case 'newsletter':
         return <Newsletter />
       default:
