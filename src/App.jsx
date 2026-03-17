@@ -3,6 +3,7 @@ import Events from './components/Events'
 import Subscribers from './components/Subscribers'
 import Newsletter from './components/Newsletter'
 import TemplateManager from './components/template-manager'
+import ScheduleCreator from './components/schedule-creator'
 import Welcome from './components/Welcome'
 import { getEvents, getSubscribers } from './utils/storage'
 
@@ -34,6 +35,7 @@ function App() {
     { id: 'events', label: 'where', icon: '📍' },
     { id: 'subscribers', label: 'friends', icon: '💜' },
     { id: 'templates', label: 'templates', icon: '📝' },
+    { id: 'schedules', label: 'schedules', icon: '📅' },
     { id: 'newsletter', label: 'send', icon: '✉️' },
   ]
 
@@ -45,6 +47,8 @@ function App() {
         return <Subscribers />
       case 'templates':
         return <TemplateManager />
+      case 'schedules':
+        return <ScheduleCreator />
       case 'newsletter':
         return <Newsletter />
       default:
