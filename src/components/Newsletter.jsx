@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getEvents, getSubscribers } from '../utils/storage';
+import { authFetch } from '../utils/auth-fetch';
 
 export default function Newsletter() {
   const [events, setEvents] = useState([]);
@@ -114,7 +115,7 @@ export default function Newsletter() {
         // Send without blocking alerts
         for (const subscriber of phoneSubscribers) {
           try {
-            const response = await fetch('/api/send-sms', {
+            const response = await authFetch('/api/send-sms', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
