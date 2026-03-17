@@ -120,3 +120,28 @@ export async function deleteSchedule(scheduleId) {
     throw error;
   }
 }
+
+/**
+ * Bulk update schedules (scheduled_at only).
+ * @param {Array<string>} scheduleIds - Array of schedule UUIDs
+ * @param {object} updates - { scheduledAt: ISO 8601 string }
+ * @returns {Promise<{updatedCount: number, schedules: Array}>}
+ */
+export async function bulkUpdateSchedules(scheduleIds, updates) {
+  try {
+    const { data, error } = await supabase
+      .from('message_schedules')
+      .update({ scheduled_at: updates.scheduledAt })
+      .in('id', scheduleIds)
+      .select();
+
+    if (error) {
+      throw error;
+    }
+
+    return { updatedCount: data.length, schedules: data };
+  } catch (error) {
+    console.error('Error bulk updating schedules:', error.message);
+    throw error;
+  }
+}
