@@ -1,10 +1,11 @@
 {
   "permissions": {
-    "allow": [
+    "allowedTools": [
       "Bash(*)",
       "Read",
       "Write",
       "Edit",
+      "MultiEdit",
       "Glob",
       "Grep",
       "WebFetch",
