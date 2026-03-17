@@ -1,0 +1,11 @@
+{
+  "status": "completed",
+  "summary": "Wired authentication into the app entry point with route protection. Created ProtectedRoute component that gates all app routes behind login. Updated App.jsx to wrap all content in ProtectedRoute, added app header displaying user phone number and logout button, preserved subscribe link bypass for public access. Removed redundant AuthLayout wrapper from main.jsx (AuthProvider remains). Created authFetch utility for authenticated API calls with Bearer token and updated Newsletter component to use it. Build passes successfully.",
+  "files_changed": [
+    "src/components/protected-route.jsx",
+    "src/App.jsx",
+    "src/main.jsx",
+    "src/utils/auth-fetch.js",
+    "src/components/Newsletter.jsx"
+  ]
+}
