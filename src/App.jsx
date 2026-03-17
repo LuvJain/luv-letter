@@ -3,15 +3,21 @@ import Events from './components/Events'
 import Subscribers from './components/Subscribers'
 import Newsletter from './components/Newsletter'
 import Welcome from './components/Welcome'
+import ProtectedRoute from './components/protected-route'
 import { getEvents, getSubscribers } from './utils/storage'
+import { useAuth } from './hooks/use-auth'
 
 function App() {
+  const auth = useAuth()
   const [currentTab, setCurrentTab] = useState('events')
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
   const [subscriberContact, setSubscriberContact] = useState('')
   const [subscriberName, setSubscriberName] = useState('')
   const [subscriberType, setSubscriberType] = useState('email')
+
+  // Allow public subscribe links to bypass auth
+  const isSubscribeLink = new URLSearchParams(window.location.search).get('subscribe') === 'true'
 
   useEffect(() => {
     // Check if URL has subscribe parameter
@@ -76,128 +82,160 @@ function App() {
     setSubscriberType('email')
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-rose-50 to-orange-50">
-      {/* Welcome Screen */}
-      {showWelcome && !showSubscribeModal && (
-        <div className="fixed inset-0 bg-gradient-to-br from-purple-50 via-rose-50 to-orange-50 z-50 overflow-auto">
-          <Welcome onGetStarted={() => setShowWelcome(false)} />
-        </div>
-      )}
-
-      {/* Subscribe Modal */}
-      {showSubscribeModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 relative">
-            <button
-              onClick={() => setShowSubscribeModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
-            >
-              ✕
-            </button>
-
-            <div className="text-center mb-6 animate-slide-up">
-              <div className="text-6xl mb-4">💌</div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-rose-500 bg-clip-text text-transparent mb-2">
-                subscribe to updates
-              </h2>
-              <p className="text-sm text-gray-500">
-                get monthly updates about where i'll be
-              </p>
-            </div>
-
-            <form onSubmit={handleSubscribe} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold mb-2 uppercase tracking-wide text-gray-500">
-                  your name
-                </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={subscriberName}
-                  onChange={(e) => setSubscriberName(e.target.value)}
-                  placeholder="your name"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-2 uppercase tracking-wide text-gray-500">
-                  how should they reach you? *
-                </label>
-                <div className="flex gap-2 mb-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSubscriberType('email')
-                      setSubscriberContact('')
-                    }}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                      subscriberType === 'email'
-                        ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    📧 Email
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSubscriberType('phone')
-                      setSubscriberContact('')
-                    }}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                      subscriberType === 'phone'
-                        ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    📱 Phone
-                  </button>
-                </div>
-                <input
-                  type={subscriberType === 'email' ? 'email' : 'tel'}
-                  className="input-field"
-                  value={subscriberContact}
-                  onChange={(e) => setSubscriberContact(e.target.value)}
-                  placeholder={subscriberType === 'email' ? 'you@example.com' : '+1234567890'}
-                  required
-                />
-              </div>
-
-              <button type="submit" className="btn-primary w-full">
-                subscribe
+  // Subscribe modal is public and bypasses auth
+  if (isSubscribeLink) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-rose-50 to-orange-50">
+        {showSubscribeModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 relative">
+              <button
+                onClick={() => setShowSubscribeModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ✕
               </button>
-            </form>
+
+              <div className="text-center mb-6 animate-slide-up">
+                <div className="text-6xl mb-4">💌</div>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-rose-500 bg-clip-text text-transparent mb-2">
+                  subscribe to updates
+                </h2>
+                <p className="text-sm text-gray-500">
+                  get monthly updates about where i'll be
+                </p>
+              </div>
+
+              <form onSubmit={handleSubscribe} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold mb-2 uppercase tracking-wide text-gray-500">
+                    your name
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={subscriberName}
+                    onChange={(e) => setSubscriberName(e.target.value)}
+                    placeholder="your name"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold mb-2 uppercase tracking-wide text-gray-500">
+                    how should they reach you? *
+                  </label>
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSubscriberType('email')
+                        setSubscriberContact('')
+                      }}
+                      className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                        subscriberType === 'email'
+                          ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      📧 Email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSubscriberType('phone')
+                        setSubscriberContact('')
+                      }}
+                      className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                        subscriberType === 'phone'
+                          ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      📱 Phone
+                    </button>
+                  </div>
+                  <input
+                    type={subscriberType === 'email' ? 'email' : 'tel'}
+                    className="input-field"
+                    value={subscriberContact}
+                    onChange={(e) => setSubscriberContact(e.target.value)}
+                    placeholder={subscriberType === 'email' ? 'you@example.com' : '+1234567890'}
+                    required
+                  />
+                </div>
+
+                <button type="submit" className="btn-primary w-full">
+                  subscribe
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+    )
+  }
 
-      {/* Main Content */}
-      <main className="pb-16">
-        {renderContent()}
-      </main>
+  return (
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-rose-50 to-orange-50">
+        {/* App Header with user info and logout */}
+        {auth.isAuthenticated && (
+          <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-lg border-b border-purple-100">
+            <div className="flex items-center justify-between px-4 h-12">
+              <span className="text-sm font-semibold text-gray-600 truncate">
+                {auth.user?.phone_number}
+              </span>
+              <button
+                onClick={auth.logout}
+                className="text-sm font-semibold text-gray-400 hover:text-rose-500 transition-colors px-3 py-1 rounded-lg hover:bg-rose-50"
+              >
+                logout
+              </button>
+            </div>
+          </header>
+        )}
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-purple-100 safe-area-bottom">
-        <div className="flex justify-around items-center h-16">
-          {tabs.map((tab) => (
+        {/* Welcome Screen */}
+        {showWelcome && (
+          <div className="fixed inset-0 bg-gradient-to-br from-purple-50 via-rose-50 to-orange-50 z-50 overflow-auto">
+            <Welcome onGetStarted={() => setShowWelcome(false)} />
+          </div>
+        )}
+
+        {/* Main Content */}
+        <main className="pb-16">
+          {renderContent()}
+        </main>
+
+        {/* Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-purple-100 safe-area-bottom">
+          <div className="flex justify-around items-center h-16">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setCurrentTab(tab.id)}
+                className={`flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 ${
+                  currentTab === tab.id
+                    ? 'text-orange-500 scale-110'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <span className="text-2xl mb-1">{tab.icon}</span>
+                <span className="text-xs font-semibold">{tab.label}</span>
+              </button>
+            ))}
             <button
-              key={tab.id}
-              onClick={() => setCurrentTab(tab.id)}
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 ${
-                currentTab === tab.id
-                  ? 'text-orange-500 scale-110'
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
+              onClick={auth.logout}
+              className="flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 text-gray-400 hover:text-rose-500"
             >
-              <span className="text-2xl mb-1">{tab.icon}</span>
-              <span className="text-xs font-semibold">{tab.label}</span>
+              <span className="text-2xl mb-1">👋</span>
+              <span className="text-xs font-semibold">logout</span>
             </button>
-          ))}
-        </div>
-      </nav>
-    </div>
+          </div>
+        </nav>
+      </div>
+    </ProtectedRoute>
   )
 }
 
