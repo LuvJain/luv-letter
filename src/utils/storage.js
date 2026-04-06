@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   KIRO_ITEMS: 'luvletter_kiro_items',
   KIRO_SCRAPE_LOG: 'luvletter_kiro_scrape_log',
   KIRO_NEWSLETTER_HISTORY: 'luvletter_kiro_newsletter_history',
+  KIRO_SUBSCRIBERS: 'luvletter_kiro_subscribers',
 };
 
 // Events
@@ -167,6 +168,77 @@ export const addNewsletterHistoryEntry = (entry) => {
   localStorage.setItem(STORAGE_KEYS.KIRO_NEWSLETTER_HISTORY, JSON.stringify(history));
 };
 
+// Kiro Newsletter Subscribers
+export const getKiroSubscribers = () => {
+  const subscribers = localStorage.getItem(STORAGE_KEYS.KIRO_SUBSCRIBERS);
+  return subscribers ? JSON.parse(subscribers) : [];
+};
+
+export const saveKiroSubscribers = (subscribers) => {
+  localStorage.setItem(STORAGE_KEYS.KIRO_SUBSCRIBERS, JSON.stringify(subscribers));
+};
+
+// Generate a simple random token for unsubscribe links
+const generateToken = () => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < 32; i++) {
+    token += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return token;
+};
+
+export const addKiroSubscriber = (email, name = '') => {
+  const subscribers = getKiroSubscribers();
+  // Check for duplicate email
+  const existing = subscribers.find(
+    (s) => s.email.toLowerCase() === email.toLowerCase()
+  );
+  if (existing) {
+    // Reactivate if previously unsubscribed
+    if (!existing.active) {
+      existing.active = true;
+      existing.resubscribedAt = new Date().toISOString();
+      saveKiroSubscribers(subscribers);
+    }
+    return existing;
+  }
+
+  const newSubscriber = {
+    id: Date.now().toString(),
+    email,
+    name,
+    active: true,
+    unsubscribeToken: generateToken(),
+    addedAt: new Date().toISOString(),
+  };
+  subscribers.push(newSubscriber);
+  saveKiroSubscribers(subscribers);
+  return newSubscriber;
+};
+
+export const removeKiroSubscriber = (id) => {
+  const subscribers = getKiroSubscribers();
+  const filtered = subscribers.filter((s) => s.id !== id);
+  saveKiroSubscribers(filtered);
+};
+
+export const unsubscribeByToken = (token) => {
+  const subscribers = getKiroSubscribers();
+  const subscriber = subscribers.find((s) => s.unsubscribeToken === token);
+  if (subscriber) {
+    subscriber.active = false;
+    subscriber.unsubscribedAt = new Date().toISOString();
+    saveKiroSubscribers(subscribers);
+    return { success: true, email: subscriber.email };
+  }
+  return { success: false };
+};
+
+export const getActiveKiroSubscribers = () => {
+  return getKiroSubscribers().filter((s) => s.active);
+};
+
 // Export/Import
 export const exportData = () => {
   return {
@@ -174,6 +246,7 @@ export const exportData = () => {
     subscribers: getSubscribers(),
     settings: getSettings(),
     kiroItems: getKiroItems(),
+    kiroSubscribers: getKiroSubscribers(),
     newsletterHistory: getNewsletterHistory(),
     exportedAt: new Date().toISOString(),
   };
@@ -184,4 +257,5 @@ export const importData = (data) => {
   if (data.subscribers) saveSubscribers(data.subscribers);
   if (data.settings) saveSettings(data.settings);
   if (data.kiroItems) saveKiroItems(data.kiroItems);
+  if (data.kiroSubscribers) saveKiroSubscribers(data.kiroSubscribers);
 };

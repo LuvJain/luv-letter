@@ -299,7 +299,8 @@ export const formatDigestAsText = (digest, introMessage = '') => {
 };
 
 // Format digest as HTML for email (bite-sized format)
-export const formatDigestAsHtml = (digest, introMessage = '') => {
+// unsubscribeUrl is optional — when provided, an unsubscribe link is added to the footer
+export const formatDigestAsHtml = (digest, introMessage = '', unsubscribeUrl = '') => {
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -362,6 +363,9 @@ export const formatDigestAsHtml = (digest, introMessage = '') => {
   html += `<div style="text-align:center;padding:16px 0 0;border-top:1px solid #e5e7eb;">`;
   html += `<p style="font-size:11px;color:#9ca3af;margin:0;">Kiro Digest &mdash; Automated Newsletter</p>`;
   html += `<p style="font-size:11px;color:#9ca3af;margin:2px 0 0;">Sources: AWS official channels only (first-party)</p>`;
+  if (unsubscribeUrl) {
+    html += `<p style="font-size:11px;margin:8px 0 0;"><a href="${unsubscribeUrl}" style="color:#7c3aed;text-decoration:underline;">Unsubscribe</a> from this newsletter</p>`;
+  }
   html += `</div>`;
 
   html += `</div></div>`;
@@ -369,9 +373,18 @@ export const formatDigestAsHtml = (digest, introMessage = '') => {
   return html;
 };
 
+// Build the base URL for the app (used for unsubscribe links)
+const getBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return `${window.location.protocol}//${window.location.host}`;
+  }
+  return '';
+};
+
 // Compile and deliver: full end-to-end cycle
+// Now supports Kiro-specific subscribers with per-recipient unsubscribe links
 export const compileAndDeliver = async (subscribers, options = {}) => {
-  const { introMessage = '', minRelevanceScore = 3 } = options;
+  const { introMessage = '', minRelevanceScore = 3, emailSettings = null } = options;
 
   // Run pipeline with all stored items included for a complete digest
   const pipelineResult = await runPipeline({
@@ -384,42 +397,90 @@ export const compileAndDeliver = async (subscribers, options = {}) => {
   // Generate newsletter content
   const textBody = formatDigestAsText(digest, introMessage);
   const subject = `Kiro Digest - ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+  const baseUrl = getBaseUrl();
 
   // Delivery results
   const deliveryResults = {
-    email: { sent: 0, failed: 0, recipients: [] },
+    email: { sent: 0, failed: 0, recipients: [], method: '' },
     sms: { sent: 0, failed: 0, recipients: [] },
   };
 
-  const emailSubscribers = subscribers.filter((s) => s.type === 'email' || !s.type);
+  // Separate Kiro subscribers (have unsubscribeToken) from legacy subscribers
+  const kiroEmailSubscribers = subscribers.filter(
+    (s) => s.unsubscribeToken && s.email && s.active !== false
+  );
+  const legacyEmailSubscribers = subscribers.filter(
+    (s) => !s.unsubscribeToken && (s.type === 'email' || !s.type)
+  );
   const phoneSubscribers = subscribers.filter((s) => s.type === 'phone');
 
-  // Deliver via email (mailto)
-  if (emailSubscribers.length > 0) {
-    const bcc = emailSubscribers.map((s) => s.contact || s.email).join(',');
+  // Deliver via API to Kiro subscribers (with per-recipient unsubscribe links)
+  if (kiroEmailSubscribers.length > 0 && emailSettings && emailSettings.apiKey) {
+    const recipients = kiroEmailSubscribers.map((sub) => {
+      const unsubscribeUrl = `${baseUrl}/api/unsubscribe?token=${sub.unsubscribeToken}`;
+      const personalizedHtml = formatDigestAsHtml(digest, introMessage, unsubscribeUrl);
+      return {
+        email: sub.email,
+        html: personalizedHtml,
+      };
+    });
+
+    try {
+      const response = await fetch('/api/send-kiro-newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipients,
+          subject,
+          html: formatDigestAsHtml(digest, introMessage), // fallback html without unsub link
+          settings: emailSettings,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        deliveryResults.email.sent += result.sent || 0;
+        deliveryResults.email.failed += result.failed || 0;
+        deliveryResults.email.method = 'api';
+      } else {
+        deliveryResults.email.failed += kiroEmailSubscribers.length;
+        deliveryResults.email.method = 'api-failed';
+      }
+    } catch {
+      deliveryResults.email.failed += kiroEmailSubscribers.length;
+      deliveryResults.email.method = 'api-failed';
+    }
+    deliveryResults.email.recipients.push(
+      ...kiroEmailSubscribers.map((s) => s.email)
+    );
+  }
+
+  // Deliver via mailto to legacy subscribers (fallback for subscribers without tokens)
+  if (legacyEmailSubscribers.length > 0) {
+    const bcc = legacyEmailSubscribers.map((s) => s.contact || s.email).join(',');
     const mailtoLink = `mailto:?bcc=${encodeURIComponent(bcc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(textBody)}`;
 
     if (mailtoLink.length > 2000) {
-      // Copy to clipboard for manual send
       try {
         await navigator.clipboard.writeText(`To: (BCC your subscribers)\nSubject: ${subject}\n\n${textBody}`);
-        deliveryResults.email.sent = emailSubscribers.length;
-        deliveryResults.email.method = 'clipboard';
+        deliveryResults.email.sent += legacyEmailSubscribers.length;
+        if (!deliveryResults.email.method) deliveryResults.email.method = 'clipboard';
       } catch {
-        deliveryResults.email.failed = emailSubscribers.length;
-        deliveryResults.email.method = 'clipboard-failed';
+        deliveryResults.email.failed += legacyEmailSubscribers.length;
+        if (!deliveryResults.email.method) deliveryResults.email.method = 'clipboard-failed';
       }
     } else {
       window.location.href = mailtoLink;
-      deliveryResults.email.sent = emailSubscribers.length;
-      deliveryResults.email.method = 'mailto';
+      deliveryResults.email.sent += legacyEmailSubscribers.length;
+      if (!deliveryResults.email.method) deliveryResults.email.method = 'mailto';
     }
-    deliveryResults.email.recipients = emailSubscribers.map((s) => s.contact || s.email);
+    deliveryResults.email.recipients.push(
+      ...legacyEmailSubscribers.map((s) => s.contact || s.email)
+    );
   }
 
   // Deliver via SMS
   if (phoneSubscribers.length > 0) {
-    // Truncate for SMS
     const smsBody = textBody.substring(0, 1600);
 
     for (const subscriber of phoneSubscribers) {
