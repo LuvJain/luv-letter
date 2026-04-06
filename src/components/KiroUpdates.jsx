@@ -8,6 +8,12 @@ import {
   getLastScrapeTime,
   getSubscribers,
   getNewsletterHistory,
+  getKiroSubscribers,
+  addKiroSubscriber,
+  removeKiroSubscriber,
+  getActiveKiroSubscribers,
+  unsubscribeByToken,
+  getSettings,
 } from '../utils/storage';
 
 export default function KiroUpdates() {
@@ -21,11 +27,20 @@ export default function KiroUpdates() {
   const [showPreview, setShowPreview] = useState(false);
   const [introMessage, setIntroMessage] = useState('');
   const [subscribers, setSubscribers] = useState([]);
+  const [kiroSubscribers, setKiroSubscribers] = useState([]);
   const [newsletterHistory, setNewsletterHistory] = useState([]);
   const [activeTab, setActiveTab] = useState('pipeline');
+  const [newSubEmail, setNewSubEmail] = useState('');
+  const [newSubName, setNewSubName] = useState('');
+  const [emailApiKey, setEmailApiKey] = useState('');
+  const [emailProvider, setEmailProvider] = useState('resend');
+  const [fromEmail, setFromEmail] = useState('');
+  const [fromName, setFromName] = useState('');
 
   useEffect(() => {
     loadData();
+    // Process any pending unsubscribes from the unsubscribe endpoint
+    processPendingUnsubscribes();
   }, []);
 
   const loadData = () => {
@@ -33,7 +48,29 @@ export default function KiroUpdates() {
     setScrapeLog(getScrapeLog());
     setLastScrape(getLastScrapeTime());
     setSubscribers(getSubscribers());
+    setKiroSubscribers(getKiroSubscribers());
     setNewsletterHistory(getNewsletterHistory());
+    // Load saved email settings
+    const settings = getSettings();
+    if (settings.kiroEmailApiKey) setEmailApiKey(settings.kiroEmailApiKey);
+    if (settings.kiroEmailProvider) setEmailProvider(settings.kiroEmailProvider);
+    if (settings.kiroFromEmail) setFromEmail(settings.kiroFromEmail);
+    if (settings.kiroFromName) setFromName(settings.kiroFromName);
+  };
+
+  const processPendingUnsubscribes = () => {
+    try {
+      const pending = JSON.parse(localStorage.getItem('luvletter_kiro_unsubscribes') || '[]');
+      if (pending.length > 0) {
+        for (const token of pending) {
+          unsubscribeByToken(token);
+        }
+        localStorage.removeItem('luvletter_kiro_unsubscribes');
+        setKiroSubscribers(getKiroSubscribers());
+      }
+    } catch {
+      // Ignore errors processing pending unsubscribes
+    }
   };
 
   // Run the full pipeline: scrape -> deduplicate -> filter -> score -> format
@@ -74,8 +111,12 @@ export default function KiroUpdates() {
 
   // Full end-to-end: detect -> compile -> deliver
   const handleCompileAndDeliver = async () => {
-    if (subscribers.length === 0) {
-      alert('Add some friends first from the friends tab!');
+    const activeKiroSubs = getActiveKiroSubscribers();
+    const legacySubs = subscribers;
+    const allRecipients = [...activeKiroSubs, ...legacySubs];
+
+    if (allRecipients.length === 0) {
+      alert('Add some subscribers first from the subscribers tab!');
       return;
     }
 
@@ -85,12 +126,26 @@ export default function KiroUpdates() {
       return;
     }
 
+    // Check if API settings are configured for Kiro subscribers
+    if (activeKiroSubs.length > 0 && (!emailApiKey || !fromEmail)) {
+      alert('Configure email API settings in the subscribers tab to send to Kiro subscribers.');
+      return;
+    }
+
     setIsSending(true);
 
     try {
-      const result = await compileAndDeliver(subscribers, {
+      const emailSettings = emailApiKey && fromEmail ? {
+        apiKey: emailApiKey,
+        apiProvider: emailProvider,
+        fromEmail,
+        fromName,
+      } : null;
+
+      const result = await compileAndDeliver(allRecipients, {
         introMessage,
         minRelevanceScore: 3,
+        emailSettings,
       });
 
       const emailCount = result.delivery.email.sent;
@@ -113,6 +168,31 @@ export default function KiroUpdates() {
     } finally {
       setIsSending(false);
     }
+  };
+
+  // Subscriber management handlers
+  const handleAddKiroSubscriber = (e) => {
+    e.preventDefault();
+    if (!newSubEmail.trim()) return;
+    addKiroSubscriber(newSubEmail.trim(), newSubName.trim());
+    setNewSubEmail('');
+    setNewSubName('');
+    setKiroSubscribers(getKiroSubscribers());
+  };
+
+  const handleRemoveKiroSubscriber = (id) => {
+    removeKiroSubscriber(id);
+    setKiroSubscribers(getKiroSubscribers());
+  };
+
+  const handleSaveEmailSettings = () => {
+    const settings = getSettings();
+    settings.kiroEmailApiKey = emailApiKey;
+    settings.kiroEmailProvider = emailProvider;
+    settings.kiroFromEmail = fromEmail;
+    settings.kiroFromName = fromName;
+    localStorage.setItem('luvletter_settings', JSON.stringify(settings));
+    alert('Email settings saved.');
   };
 
   const handleClearItems = () => {
@@ -178,6 +258,7 @@ export default function KiroUpdates() {
         {[
           { id: 'pipeline', label: 'pipeline' },
           { id: 'digest', label: 'digest' },
+          { id: 'subscribers', label: 'subscribers' },
           { id: 'history', label: 'history' },
         ].map((tab) => (
           <button
@@ -471,7 +552,12 @@ export default function KiroUpdates() {
             </h2>
 
             <p className="text-sm text-gray-600 mb-2">
-              sending to {subscribers.length} friend{subscribers.length !== 1 ? 's' : ''}
+              sending to {getActiveKiroSubscribers().length + subscribers.length} recipient{(getActiveKiroSubscribers().length + subscribers.length) !== 1 ? 's' : ''}
+              {getActiveKiroSubscribers().length > 0 && (
+                <span className="text-xs text-purple-600 ml-1">
+                  ({getActiveKiroSubscribers().length} kiro subscriber{getActiveKiroSubscribers().length !== 1 ? 's' : ''})
+                </span>
+              )}
             </p>
 
             <div className="mb-3">
@@ -517,6 +603,152 @@ export default function KiroUpdates() {
               </div>
             </div>
           )}
+        </>
+      )}
+
+      {/* Subscribers Tab */}
+      {activeTab === 'subscribers' && (
+        <>
+          {/* Add Subscriber */}
+          <div className="card mb-4">
+            <h2 className="font-semibold mb-3 text-sm uppercase tracking-wide text-gray-500">
+              add subscriber
+            </h2>
+            <form onSubmit={handleAddKiroSubscriber} className="space-y-2">
+              <input
+                type="email"
+                className="input-field"
+                placeholder="email address"
+                value={newSubEmail}
+                onChange={(e) => setNewSubEmail(e.target.value)}
+                required
+              />
+              <input
+                type="text"
+                className="input-field"
+                placeholder="name (optional)"
+                value={newSubName}
+                onChange={(e) => setNewSubName(e.target.value)}
+              />
+              <button type="submit" className="btn-primary w-full">
+                add subscriber
+              </button>
+            </form>
+          </div>
+
+          {/* Subscriber List */}
+          <div className="card mb-4">
+            <h2 className="font-semibold mb-3 text-sm uppercase tracking-wide text-gray-500">
+              kiro subscribers ({kiroSubscribers.length})
+            </h2>
+
+            {kiroSubscribers.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                no subscribers yet. add email addresses above to start sending the kiro digest.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {kiroSubscribers.map((sub) => (
+                  <div
+                    key={sub.id}
+                    className={`flex items-center justify-between p-2 rounded-lg ${
+                      sub.active ? 'bg-gray-50' : 'bg-red-50'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">
+                        {sub.name ? `${sub.name} ` : ''}
+                        <span className="text-gray-500">{sub.email}</span>
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        {sub.active ? (
+                          <span className="text-green-600">active</span>
+                        ) : (
+                          <span className="text-red-500">unsubscribed</span>
+                        )}
+                        <span>&middot;</span>
+                        <span>added {formatTimeAgo(sub.addedAt)}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveKiroSubscriber(sub.id)}
+                      className="text-xs text-red-400 hover:text-red-600 ml-2 shrink-0"
+                    >
+                      remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Email API Settings */}
+          <div className="card mb-4">
+            <h2 className="font-semibold mb-3 text-sm uppercase tracking-wide text-gray-500">
+              email delivery settings
+            </h2>
+            <p className="text-xs text-gray-500 mb-3">
+              required to send emails via API. each recipient gets a personal unsubscribe link.
+            </p>
+
+            <div className="space-y-2">
+              <div>
+                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide text-gray-400">
+                  provider
+                </label>
+                <select
+                  className="input-field"
+                  value={emailProvider}
+                  onChange={(e) => setEmailProvider(e.target.value)}
+                >
+                  <option value="resend">Resend</option>
+                  <option value="sendgrid">SendGrid</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide text-gray-400">
+                  api key
+                </label>
+                <input
+                  type="password"
+                  className="input-field"
+                  placeholder="your API key"
+                  value={emailApiKey}
+                  onChange={(e) => setEmailApiKey(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide text-gray-400">
+                  from email
+                </label>
+                <input
+                  type="email"
+                  className="input-field"
+                  placeholder="newsletter@yourdomain.com"
+                  value={fromEmail}
+                  onChange={(e) => setFromEmail(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide text-gray-400">
+                  from name (optional)
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Kiro Digest"
+                  value={fromName}
+                  onChange={(e) => setFromName(e.target.value)}
+                />
+              </div>
+              <button
+                onClick={handleSaveEmailSettings}
+                className="btn-secondary w-full"
+              >
+                save settings
+              </button>
+            </div>
+          </div>
         </>
       )}
 

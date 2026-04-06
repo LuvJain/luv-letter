@@ -1,0 +1,11 @@
+{
+  "status": "completed",
+  "summary": "Implemented email delivery to multiple recipients with subscription management and unsubscribe handling. Added dedicated Kiro subscriber storage with per-subscriber unsubscribe tokens. Created a server-side API endpoint (api/send-kiro-newsletter.js) that sends individualized emails through Resend or SendGrid, each containing a personalized unsubscribe link. Created an unsubscribe API endpoint (api/unsubscribe.js) that renders a confirmation page and records the opt-out. Updated the HTML digest template footer to include unsubscribe links. Updated compileAndDeliver to route Kiro subscribers through the API with per-recipient HTML, while preserving legacy mailto/SMS fallback. Added a new 'subscribers' tab to the KiroUpdates UI for managing Kiro newsletter subscribers and configuring email delivery settings.",
+  "files_changed": [
+    "src/utils/storage.js",
+    "src/utils/kiro-pipeline.js",
+    "src/components/KiroUpdates.jsx",
+    "api/send-kiro-newsletter.js",
+    "api/unsubscribe.js"
+  ]
+}
