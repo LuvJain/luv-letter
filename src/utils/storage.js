@@ -4,6 +4,8 @@ const STORAGE_KEYS = {
   EVENTS: 'luvletter_events',
   SUBSCRIBERS: 'luvletter_subscribers',
   SETTINGS: 'luvletter_settings',
+  KIRO_ITEMS: 'luvletter_kiro_items',
+  KIRO_SCRAPE_LOG: 'luvletter_kiro_scrape_log',
 };
 
 // Events
@@ -98,12 +100,60 @@ export const setUserEmail = (email) => {
   saveSettings(settings);
 };
 
+// Kiro Scraper Items
+export const getKiroItems = () => {
+  const items = localStorage.getItem(STORAGE_KEYS.KIRO_ITEMS);
+  return items ? JSON.parse(items) : [];
+};
+
+export const saveKiroItems = (items) => {
+  localStorage.setItem(STORAGE_KEYS.KIRO_ITEMS, JSON.stringify(items));
+};
+
+export const addKiroItems = (newItems) => {
+  const existing = getKiroItems();
+  const existingUrls = new Set(existing.map((item) => item.url));
+  const uniqueNew = newItems.filter((item) => item.url && !existingUrls.has(item.url));
+  const merged = [...existing, ...uniqueNew];
+  saveKiroItems(merged);
+  return { total: merged.length, added: uniqueNew.length };
+};
+
+export const clearKiroItems = () => {
+  saveKiroItems([]);
+};
+
+// Kiro Scrape Log
+export const getScrapeLog = () => {
+  const log = localStorage.getItem(STORAGE_KEYS.KIRO_SCRAPE_LOG);
+  return log ? JSON.parse(log) : [];
+};
+
+export const addScrapeLogEntry = (entry) => {
+  const log = getScrapeLog();
+  log.unshift({
+    ...entry,
+    timestamp: new Date().toISOString(),
+  });
+  // Keep last 50 entries
+  if (log.length > 50) {
+    log.length = 50;
+  }
+  localStorage.setItem(STORAGE_KEYS.KIRO_SCRAPE_LOG, JSON.stringify(log));
+};
+
+export const getLastScrapeTime = () => {
+  const log = getScrapeLog();
+  return log.length > 0 ? log[0].timestamp : null;
+};
+
 // Export/Import
 export const exportData = () => {
   return {
     events: getEvents(),
     subscribers: getSubscribers(),
     settings: getSettings(),
+    kiroItems: getKiroItems(),
     exportedAt: new Date().toISOString(),
   };
 };
@@ -112,4 +162,5 @@ export const importData = (data) => {
   if (data.events) saveEvents(data.events);
   if (data.subscribers) saveSubscribers(data.subscribers);
   if (data.settings) saveSettings(data.settings);
+  if (data.kiroItems) saveKiroItems(data.kiroItems);
 };
