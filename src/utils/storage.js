@@ -6,6 +6,7 @@ const STORAGE_KEYS = {
   SETTINGS: 'luvletter_settings',
   KIRO_ITEMS: 'luvletter_kiro_items',
   KIRO_SCRAPE_LOG: 'luvletter_kiro_scrape_log',
+  KIRO_NEWSLETTER_HISTORY: 'luvletter_kiro_newsletter_history',
 };
 
 // Events
@@ -147,6 +148,25 @@ export const getLastScrapeTime = () => {
   return log.length > 0 ? log[0].timestamp : null;
 };
 
+// Kiro Newsletter History
+export const getNewsletterHistory = () => {
+  const history = localStorage.getItem(STORAGE_KEYS.KIRO_NEWSLETTER_HISTORY);
+  return history ? JSON.parse(history) : [];
+};
+
+export const addNewsletterHistoryEntry = (entry) => {
+  const history = getNewsletterHistory();
+  history.unshift({
+    ...entry,
+    sentAt: new Date().toISOString(),
+  });
+  // Keep last 20 newsletters
+  if (history.length > 20) {
+    history.length = 20;
+  }
+  localStorage.setItem(STORAGE_KEYS.KIRO_NEWSLETTER_HISTORY, JSON.stringify(history));
+};
+
 // Export/Import
 export const exportData = () => {
   return {
@@ -154,6 +174,7 @@ export const exportData = () => {
     subscribers: getSubscribers(),
     settings: getSettings(),
     kiroItems: getKiroItems(),
+    newsletterHistory: getNewsletterHistory(),
     exportedAt: new Date().toISOString(),
   };
 };
