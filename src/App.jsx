@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Events from './components/Events'
 import Subscribers from './components/Subscribers'
 import Newsletter from './components/Newsletter'
+import KiroUpdates from './components/KiroUpdates'
 import Welcome from './components/Welcome'
 import { getEvents, getSubscribers } from './utils/storage'
 
@@ -33,6 +34,7 @@ function App() {
     { id: 'events', label: 'where', icon: '📍' },
     { id: 'subscribers', label: 'friends', icon: '💜' },
     { id: 'newsletter', label: 'send', icon: '✉️' },
+    { id: 'kiro', label: 'kiro', icon: '🔍' },
   ]
 
   const renderContent = () => {
@@ -43,6 +45,8 @@ function App() {
         return <Subscribers />
       case 'newsletter':
         return <Newsletter />
+      case 'kiro':
+        return <KiroUpdates />
       default:
         return <Events />
     }
